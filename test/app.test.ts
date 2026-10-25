@@ -52,6 +52,16 @@ describe('API boundaries', () => {
     expect(response.status).toBe(403);
   });
 
+  it('allows opening the UI from another site without exposing the API', async () => {
+    const linkedApp = createApp(f.service, 8788);
+    linkedApp.get('/', (c) => c.text('Local app shell'));
+    const navigation = await linkedApp.request(`${base}/`, { headers: { 'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate' } });
+    expect(navigation.status).toBe(200);
+    expect(await navigation.text()).toBe('Local app shell');
+    const apiRead = await linkedApp.request(`${base}/api/status`, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
+    expect(apiRead.status).toBe(403);
+  });
+
   it('requires meaningful input and rejects model tool parameters', async () => {
     expect((await post('/api/tasks', { request: 'short' })).status).toBe(400);
     expect((await post('/api/tasks', { request: 'Prepare a reply.', tools: ['shell'] })).status).toBe(400);

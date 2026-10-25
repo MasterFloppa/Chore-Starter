@@ -32,7 +32,10 @@ export function createApp(service: TaskService, port: number, development = fals
     const origin = c.req.header('Origin');
     if (!allowedHosts.has(host)) return c.json({ error: 'This app only accepts its local address.' }, 403);
     if (origin && !allowedOrigins.has(origin)) return c.json({ error: 'Requests from another website are not allowed.' }, 403);
-    if (c.req.header('Sec-Fetch-Site') === 'cross-site') return c.json({ error: 'Cross-site requests are not allowed.' }, 403);
+    // Opening the app from a link is a cross-site navigation, not an API request.
+    if (c.req.path.startsWith('/api/') && c.req.header('Sec-Fetch-Site') === 'cross-site') {
+      return c.json({ error: 'Cross-site requests are not allowed.' }, 403);
+    }
     await next();
   });
 
