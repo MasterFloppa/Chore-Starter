@@ -67,6 +67,7 @@ export class TaskService {
   }
 
   async prepare(input: PrepareInput, signal?: AbortSignal): Promise<Task> {
+    if (signal?.aborted) throw new AppError('Preparation was cancelled.', 409);
     if (this.busy) throw new AppError('Another task is being prepared. Let it finish, then try again.', 409);
     if (this.store.read().tasks.length >= MAX_TASKS) throw new AppError('Local history is full (200 tasks). Back up and clear the data file before preparing more.', 409);
     this.busy = true;
@@ -74,6 +75,7 @@ export class TaskService {
     try {
       const selectedModel = this.store.read().model;
       const prepared = await this.model.prepare(input, selectedModel, signal);
+      if (signal?.aborted) throw new AppError('Preparation was cancelled.', 409);
       const at = new Date(this.now()).toISOString();
       const task: Task = {
         ...prepared,

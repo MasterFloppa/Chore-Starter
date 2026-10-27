@@ -108,17 +108,19 @@ export function App() {
   }
 
   async function prepare() {
+    if (controller.current) return;
+    const operation = new AbortController();
+    controller.current = operation;
     setError('');
     setMessage('');
     setBusy(true);
     setElapsed(0);
-    controller.current = new AbortController();
     try {
-      const result = await api.prepare({ request: request.trim(), format }, controller.current.signal);
+      const result = await api.prepare({ request: request.trim(), format }, operation.signal);
       showTask(result);
       await refreshHistory();
     } catch (err) {
-      if (controller.current.signal.aborted) setMessage('Stopped waiting. No outside action was performed. If the draft finishes saving, it will appear in history.');
+      if (operation.signal.aborted) setMessage('Stopped waiting. No outside action was performed. If the draft finished saving before you stopped, it will appear in history.');
       else setError((err as Error).message);
     } finally {
       setBusy(false);
@@ -128,6 +130,8 @@ export function App() {
 
   function updateTask(patch: Partial<Task>) {
     setTask((cur) => cur ? { ...cur, ...patch } : null);
+    setManualCopy('');
+    setError('');
     setMessage('');
   }
 
@@ -161,6 +165,7 @@ export function App() {
     setError('');
     setApprovalError('');
     setMessage('');
+    setManualCopy('');
     try {
       const current = await save();
       setApproval(await api.preview(current.id, current.revision, action));
@@ -169,15 +174,17 @@ export function App() {
   }
 
   async function cancelApproval() {
-    if (!approval) return;
-    setWorking(true);
+    if (!approval || working) return;
+    const dismissed = approval;
+    setApproval(null);
+    setApprovalError('');
+    setMessage('Cancelled. Nothing was copied, downloaded or opened.');
     try {
-      await api.cancel(approval);
-      setApproval(null);
-      setApprovalError('');
-      setMessage('Cancelled. Nothing was copied, downloaded or opened.');
-    } catch (err) { setApprovalError((err as Error).message); }
-    finally { setWorking(false); }
+      await api.cancel(dismissed);
+    } catch (err) {
+      setMessage('Preview closed. No action was performed. The unused server approval expires automatically.');
+      setError(`Could not revoke the confirmation on the server: ${(err as Error).message}`);
+    }
   }
 
   async function confirmApproval() {
@@ -260,7 +267,7 @@ export function App() {
                   <option value="auto">Let AI choose</option><option value="email">Email draft</option><option value="message">Message draft</option><option value="plan">A plan</option>
                 </select>
               </label>
-              {busy ? <button type="button" className="button secondary" onClick={() => controller.current?.abort()}>Stop waiting</button> : <button className="button primary" disabled={!status || !ready || request.trim().length < 8}>Prepare it <span aria-hidden="true">↗</span></button>}
+              {busy ? <button key="stop" type="button" className="button secondary" onClick={(e) => { e.preventDefault(); controller.current?.abort(); }}>Stop waiting</button> : <button key="prepare" type="submit" className="button primary" disabled={!status || !ready || request.trim().length < 8}>Prepare it <span aria-hidden="true">↗</span></button>}
             </div>
           </form>
           {busy ? <p className="preparing" role="status"><span className="spinner" />Preparing your task · {elapsed}s<span className="small muted">Local AI can take 30–90 seconds. Nothing is being sent or carried out.</span></p> : <div className="examples"><span>Try a small chore</span>{EXAMPLES.map((example) => <button key={example.label} onClick={() => { setRequest(example.request); document.getElementById('task-input')?.focus(); }}>{example.label} <span aria-hidden="true">↗</span></button>)}</div>}

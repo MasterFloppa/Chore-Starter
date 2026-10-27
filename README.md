@@ -79,7 +79,9 @@ Local Hono API (127.0.0.1 only)
 ```
 
 The API rejects foreign origins and requires a browser session token for writes.
-The model endpoint is restricted to loopback addresses. Nothing in this app runs on a recurring timer.
+The model endpoint is restricted to loopback addresses, and model requests do not follow HTTP redirects.
+Cloud-backed models advertised by a local Ollama server are excluded and cannot receive a task.
+Nothing in this app runs on a recurring timer.
 
 ## Configuration and privacy
 
@@ -118,6 +120,7 @@ is needed to run them. They cover storage, input validation, model failures, rev
 - **Port already in use:** stop the other process using that port or set `PORT` in `.env`.
 - **Confirmation expired / draft changed:** reopen the action preview and check the current version.
 - **Clipboard access blocked:** the app offers the approved text for manual copying.
+- **Connection lost while cancelling:** the preview still closes; any unused server approval expires after two minutes. A warning explains that server-side revocation could not be confirmed.
 - **Email app does not open:** configure a default mail app, or copy the reviewed draft manually.
 - **Not a public demo:** localhost is only accessible on this machine. Use a video for the challenge submission unless you separately deploy a demo.
 

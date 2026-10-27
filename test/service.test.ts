@@ -79,6 +79,33 @@ describe('preparation and local storage', () => {
     await first;
     expect(service.isBusy()).toBe(false);
   });
+
+  it('does not start a preparation that was already cancelled', async () => {
+    let calls = 0;
+    const service = new TaskService(f.store, {
+      health: f.model.health,
+      prepare: async () => { calls++; return structuredClone(prepared); },
+    });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(service.prepare(input, controller.signal)).rejects.toThrow('cancelled');
+    expect(calls).toBe(0);
+    expect(f.store.read().tasks).toEqual([]);
+    expect(service.isBusy()).toBe(false);
+  });
+
+  it('does not save a cancelled task even if the model ignores its abort signal', async () => {
+    let release!: (value: typeof prepared) => void;
+    const pending = new Promise<typeof prepared>((resolve) => { release = resolve; });
+    const service = new TaskService(f.store, { health: f.model.health, prepare: () => pending });
+    const controller = new AbortController();
+    const preparation = service.prepare(input, controller.signal);
+    controller.abort();
+    release(structuredClone(prepared));
+    await expect(preparation).rejects.toThrow('cancelled');
+    expect(f.store.read().tasks).toEqual([]);
+    expect(service.isBusy()).toBe(false);
+  });
 });
 
 describe('editing', () => {

@@ -50,6 +50,6 @@ export const api = {
   edit: (id: string, body: EditInput) => request<{ task: Task }>(`/tasks/${id}`, 'PATCH', body),
   settings: (model: string) => request<{ model: string }>('/settings', 'PUT', { model }),
   preview: (id: string, revision: number, action: Action) => request<Approval>(`/tasks/${id}/preview`, 'POST', { revision, action }),
-  cancel: (approval: Approval) => request<{ cancelled: boolean }>(`/tasks/${approval.taskId}/cancel`, 'POST', { token: approval.token }),
+  cancel: (approval: Approval) => request<{ cancelled: boolean }>(`/tasks/${approval.taskId}/cancel`, 'POST', { token: approval.token }, AbortSignal.timeout(5000)),
   confirm: (approval: Approval) => request<ActionResult>(`/tasks/${approval.taskId}/confirm`, 'POST', { token: approval.token }),
 };
